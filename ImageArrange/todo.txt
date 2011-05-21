@@ -1,0 +1,144 @@
+
+■画像表示
+
+画像の表示の際に画像に関する情報 (ファイル名・サイズ・形式・年月日) も併せて表示する
+画像の順番や配置を変える事が出来る様にする。
+フォルダの順番や配置を換える事が出来る様にする。
+一覧表示を出来る様にする。
+　キャッシュを保存できる様にする。
+
+
+■画像整理
+
+画像にタグを付ける事が出来る様にする。
+　a. タグに対応するフォルダを用意する
+　　×画像からタグを検索する事が難しい (重い)
+　b. 画像側にタグの文字列を記録する
+　　×画像データサイズが大きくなる
+　c. タグテーブルを作り、タグと画像と相互参照にする
+　　タグテーブル: それぞれのタグに整数を関連付ける
+　　タグ: 登録されている画像の index を一覧にして保持
+　　画像: 登録されているタグの index を一覧にして保持
+　　
+　　×複数の thm の併合の際に index を再配置しなければならない
+　　→これは画像の index に関しても同様。気にする事はない?
+
+画像にコメントや説明を記述できる様にする。
+　それぞれの情報に題を付ける事が出来る様にする。
+　つまり「作者」「日時」「場所」「ソース」等。
+
+画像に五つ星で評価を付ける事が出来る様にする。
+　星の数に対応するタグを容易すれば良い?
+　→未だ評価していない物を表示するのが面倒
+　他の人の評価と混じり合わない様に、所有者 ID を付ける?
+
+■画像比較
+
+比較済の物には flag を設定
+　類似画像と判定された物は、類似ペアとして記録
+　比較時には比較済マークのない物と全体を比較する
+平均色での比較を先に行う。その為に平均色を保持する場所も確保
+類似画像と判定された物は、並べて比べる事が出来る様にする。
+類似画像を任意に削除できる様にする
+　a. 削除した後対応する Thumb も削除して、フォルダに登録されている物も削除しなかった方に切り替える
+　　×フォルダに登録されていた物のファイル名が変化してしまう。
+　　×元々どんなファイルがあったかの情報が失われてしまう。
+　b. 削除した後対応する Thumb を、[削除しなかった方の Thumb への参照] にする。
+　　参照は index で可能。
+
+■フォルダ追加
+
+サブフォルダも検索する選択肢を表示する
+>画像の読込進捗状況を表示
+>　画像のパスを先に収集
+>　画像が一定数以上 (or 一定サイズ以上) の場合に表示
+>　→一定時間経過したら表示する様にした
+
+■PictureBox で GDI+ Error
+特定の animation gif を表示しようとした時に、PictrueBox で汎用 GDI+ 例外が発生し、Window のメッセージポンプが停止する
+例外発生時の Stack は以下の通り
+
+   場所 System.Drawing.Image.SelectActiveFrame(FrameDimension dimension, Int32 frameIndex)
+   場所 System.Drawing.ImageAnimator.ImageInfo.UpdateFrame()
+   場所 System.Drawing.ImageAnimator.UpdateFrames()
+   場所 System.Windows.Forms.PictureBox.OnPaint(PaintEventArgs pe)
+   場所 System.Windows.Forms.Control.PaintWithErrorHandling(PaintEventArgs e, Int16 layer, Boolean disposeEventArgs)
+   場所 System.Windows.Forms.Control.WmPaint(Message& m)
+   場所 System.Windows.Forms.Control.WndProc(Message& m)
+   場所 System.Windows.Forms.Control.ControlNativeWindow.OnMessage(Message& m)
+   場所 System.Windows.Forms.Control.ControlNativeWindow.WndProc(Message& m)
+   場所 System.Windows.Forms.NativeWindow.DebuggableCallback(IntPtr hWnd, Int32 msg, IntPtr wparam, IntPtr lparam)
+   場所 System.Windows.Forms.UnsafeNativeMethods.DispatchMessageW(MSG& msg)
+   場所 System.Windows.Forms.Application.ComponentManager.System.Windows.Forms.UnsafeNativeMethods.IMsoComponentManager.FPushMessageLoop(Int32 dwComponentID, Int32 reason, Int32 pvLoopData)
+   場所 System.Windows.Forms.Application.ThreadContext.RunMessageLoopInner(Int32 reason, ApplicationContext context)
+   場所 System.Windows.Forms.Application.ThreadContext.RunMessageLoop(Int32 reason, ApplicationContext context)
+   場所 System.Windows.Forms.Application.Run(Form mainForm)
+   場所 afh.ImageArrange.Program.Main() 場所 C:\Documents and Settings\koichi\My Documents\Visual Studio 2005\Projects\ImageArrange\ImageArrange\ImageArrange\Program.cs:行 29
+   場所 System.AppDomain.nExecuteAssembly(Assembly assembly, String[] args)
+   場所 System.AppDomain.ExecuteAssembly(String assemblyFile, Evidence assemblySecurity, String[] args)
+   場所 Microsoft.VisualStudio.HostingProcess.HostProc.RunUsersAssembly()
+   場所 System.Threading.ThreadHelper.ThreadStart_Context(Object state)
+   場所 System.Threading.ExecutionContext.Run(ExecutionContext executionContext, ContextCallback callback, Object state)
+   場所 System.Threading.ThreadHelper.ThreadStart()
+
+□解決方法
+1.PictureBox の WndProc を上書きして GDI+ の例外が発生した際にそれを捕まえる
+  実際にやってみた。プログラムの停止は免れられる。
+  然し、PictureBox 内部が破壊しているらしく、結局エラーの発生後には×印しか表示出来なくなる。
+2. Control の実装を調べた所、GetStyle(0x400000) が true の時に × 印を描画する様子
+　そこで、エラー直後に SetStyle(0x400000,false) を行って見た。
+　その画像ファイルは正常に表示されたが、今度はファイルの切替が出来なくなった…
+　→と思ったら、原因は試行錯誤の内に追加した
+　	this.pictureBoxState[0x20]=false であった。之を外したら正常に動く様になった…
+　	this.pictureBoxState[0x20] はどうも "Image loading completed" の意味の様である。
+　	
+■自前で PictureBox を実装してみるメモ
+
+1. WndProc を overload: WM_PAINT を捕まえる
+　base.WndProc を呼び出さずにいたら validation が為されない為か
+　無限に描画を続ける。CPU 100% 色々動かなくなってしまう。
+　
+　base.WndProc を実行した後に実行すると何も表示されない。
+　(灰色が表示されている。Result を 0 にしても 1 にしても同じ結果)
+　
+　base.WndProc を後に実行すると上手に行く
+　
+　→所が、良く考えてみたら Control の段階で OnPaint が実装されていたのだった…
+　Paint イベントになにも登録していなくても、
+　どうせ OnPaint の呼び出し直前までの処理を Control 内で実行している様子であったので、
+　Paint イベントに任せる方が賢明である。
+　
+2. アニメーション GIF で一番最後の Frame が表示されない
+　・もしかすると、
+	this.image.SelectActiveFrame(Gdi::Imaging.FrameDimension.Time,frame);
+　の frame の部分は実は 1 から始まる番号で指定する物なのかもしれないと思い、
+　1 増やした番号で実行してみた。すると、ちゃんと動く様になったと思っていたのだが、
+　暫くしたら GDI+ 汎用エラーというのが発生した。
+　　その時 frame は最大の値になっていた。
+　すると、やはり 0 から始まる番号で指定する物なのだろう…
+　と言う事は、「frame の番号は更新されているけれども、
+　Frame 自体が前回の絵柄になっている」というのが怪しい。
+　
+　・試しに frame 最大の時を条件としてブレークポイントを設定してみたが引っかからない。
+　　やはり絵柄のこう信じたいが実行されていないと言うことの様だ。
+
+□ 予定
+
+1. アニメーション
+ * アニメーションのちらつきを無くす。
+　・毎回 g.Clear() している為起こっている。
+　・然し、透明 GIF 且つアニメーションの物では g.Clear() しないと、前回の模様が残ってしまう。
+　
+ * 駒落ちを無くす
+　・駒落ちが出ない様にするというのは、アニメーションに記録されている通りのリズムで再生するという事である。
+　
+　a. これをやるには Thread を一つ占有しなければ為らないが、
+　　画像の数だけ Thread を生成するわけにはいかない。
+　　其処で、Focus を得ている画像にだけ一つ Thread を割り当てて、
+　　アニメーションさせると良いかも知れない。
+　　
+　b. 或いは、一つの Thread でやるという手もある。
+　　(登録されている画像の中で一番更新が早い物に合わせて Sleep する)
+　　処理が追いつかない場合には駒を飛ばしても良い。
+
+

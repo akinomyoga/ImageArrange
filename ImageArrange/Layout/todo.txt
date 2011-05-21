@@ -1,0 +1,145 @@
+﻿
+■コントロール設計方針
+
+内部要素の配置
+　1. 内部要素の自動配置ロジック
+　　内部要素の大きさ
+　　内部要素の変更に伴う再計算
+　2. 内部要素の座標取得
+　3. 座標から内部要素を探索
+　　HitTest (+どの部分にHitしたかの情報)
+内部要素の描画
+　1. 親から子孫へ描画関数を再帰的に呼び出していく
+　2. 一部分再描画の方法を考える。
+　   * 不透明な部分の位置・大きさが変わらない場合は、
+　     自分自身だけ再描画すれば OK
+　   * 位置・大きさが変わる場合には、
+　     親のノードから全て再描画する必要がある。
+　     (親のノードが透明な場合などは更にその親を再描画という具合に再帰的に再描画の段階を決定する)
+
+■afh.layout
+
+描画の際
+　変な形のノードや半透明のノードを考えると...
+　×Region で描画領域を管理しなければならずコストがかかる
+　　(交差判定・Grahics.Clip の設定・復元)
+　×再描画が大変になる。
+　　(というか、一部分だけ再描画というのが出来ず全部再描画しなければならない。)
+　→余り需要も無さそうなので矩形で描画領域を管理する事にする。
+　
+
+1. RectCoord を用いた実装
+
+古い実装は一掃する事にする
+--------------------------------------------------------------------------------
+namespace afh.Layout{
+	public interface IContainerNode:ILayoutNode{
+-		/// <summary>
+-		/// Content 座標と Parent 座標の座標原点のずれを取得します。\vec{O}_C-\vec{O}_P
+-		/// </summary>
+-		/// <returns>座標原点のずれを返します。</returns>
+-		Gdi::Size GetCoordDeltaContentFromParent();
+	}
+	namespace Extension{
+		public static class ILayoutNodeExtensionMethods{
+-			//------------------------------------------------------------------------
+-			//  座標処理
+-			//------------------------------------------------------------------------
+-			/// <summary>
+-			/// Bounding 座標と Parent 座標の座標原点のずれを取得します。\vec{O}_B-\vec{O}_P
+-			/// </summary>
+-			/// <returns>座標原点のずれを返します。</returns>
+-			public static Gdi::Size GetCoordDeltaBoundingFromParent(this ILayoutNode self){
+-				return new Gdi::Size(self.BoundingLeft,self.BoundingTop);
+-			}
+-			/// <summary>
+-			/// 親 Content 座標から Bounding 座標に座標変換を行います。
+-			/// </summary>
+-			/// <param name="self">自ノードを指定します。</param>
+-			/// <param name="posParent">座標変換をする親 Content 座標値を指定します。</param>
+-			/// <returns>座標変換をした後の Bounding 座標値を返します。</returns>
+-			public static Gdi::Point CoordTransfParent2Bounding(this IContainerNode self,Gdi::Point posParent){
+-				return posParent-self.GetCoordDeltaBoundingFromParent();
+-			}
+-			/// <summary>
+-			/// Bounding 座標から親 Content 座標に座標変換を行います。
+-			/// </summary>
+-			/// <param name="self">自ノードを指定します。</param>
+-			/// <param name="posBounding">座標変換をする Bounding 座標値を指定します。</param>
+-			/// <returns>座標変換をした後の親 Content 座標値を返します。</returns>
+-			public static Gdi::Point CoordTransfBounding2Parent(this IContainerNode self,Gdi::Point posBounding){
+-				return posBounding+self.GetCoordDeltaBoundingFromParent();
+-			}
+		}
+		public static class IContainerNodeExtensionMethods{
+-			/// <summary>
+-			/// 親 Content 座標から自 Content 座標に座標変換を行います。
+-			/// </summary>
+-			/// <param name="self">自ノードを指定します。</param>
+-			/// <param name="posParent">座標変換をする親 Content 座標値を指定します。</param>
+-			/// <returns>座標変換をした後の自 Content 座標値を返します。</returns>
+-			public static Gdi::Point CoordTransfParent2Content(this IContainerNode self,Gdi::Point posParent){
+-				return posParent-self.GetCoordDeltaContentFromParent();
+-			}
+-			/// <summary>
+-			/// 自 Content 座標から親 Content 座標に座標変換を行います。
+-			/// </summary>
+-			/// <param name="self">自ノードを指定します。</param>
+-			/// <param name="posContent">座標変換をする自 Content 座標値を指定します。</param>
+-			/// <returns>座標変換をした後の親 Content 座標値を返します。</returns>
+-			public static Gdi::Point CoordTransfContent2Parent(this IContainerNode self,Gdi::Point posContent){
+-				return posContent+self.GetCoordDeltaContentFromParent();
+-			}
+		}
+	}
+	public class ContainerNode:LayoutNode,IContainerNode,ILayoutNode{
+-		//--------------------------------------------------------------------------
+-		//  座標変換
+-		//--------------------------------------------------------------------------
+-		/// <summary>
+-		/// Content 座標と Parent 座標の座標原点のずれを取得します。\vec{O}_C-\vec{O}_P
+-		/// </summary>
+-		/// <returns>座標原点のずれを返します。</returns>
+-		Gdi::Size IContainerNode.GetCoordDeltaContentFromParent(){
+-			return new Gdi::Size(ContentLeft,ContentTop);
+-		}
+	}
+}
+--------------------------------------------------------------------------------
+
+■afh.Layout.ContainerNode 各部名称
+
+　■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■　↑　　　　　　　
+　■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■　BoundingRect　　
+　■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■　(DesiredRect) 　
+　■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■　│　　　　　　　
+　■■■■　　　　　　　　　　　　　　　　　　　　　　　　■■■■　│　↑　　　　　↑
+　■■■■　　　　　　　　　　　　　　　　　　　　　　　　■■■■　│　ViewRect　　ContentRect
+　■■■■　　　　　　　　　　　　　　　　　　　　　　　　■■■■　│　│　　　　　│
+　■■■■　　　いろはにほへとちりぬるをわかよたれそ　　　■■■■　│　│　　　　　│　↑　　　　　
+　■■■■　　　つねならむうゐのおくやまけふこえてあ　　　■■■■　│　│　　　　　│　InnerRect 　
+　■■■■　　　さきゆめみしゑひもせす　　　　　　　　　　■■■■　│　│　　　　　│　│　　　　　
+　■■■■　　　だるまさんが……………………ころんだ　　　■■■■　│　│　　　　　│　│　　　　　
+　■■■■　　　だるまさんが……………………ころんだ　　　■■■■　│　│　　　　　│　│　　　　　
+　■■■■　　　だるまさんが……………………ころんだ　　　■■■■　│　│　　　　　│　│　　　　　
+　■■■■　　　だるまさんが……………………ころんだ　　　■■■■　│　│　　　　　│　│　　　　　
+　■■■■　　　だるまさんが……………………ころんだ　　　■■■■　│　│　　　　　│　│　　　　　
+　■■■■　　　だるまさんが……………………ころんだ　　　■■■■　│　│　　　　　│　│　　　　　
+　■■■■　　　だるまさんが……………………ころんだ　　　■■■■　│　│　　　　　│　│　　　　　
+　■■■■　　　だるまさんが……………………ころんだ　　　■■■■　│　│　　　　　│　│　　　　　
+　■■■■　　　だるまさんが……………………ころんだ　　　■■■■　│　│　　　　　│　│　　　　　
+　■■■■　　　だるまさんが……………………ころんだ　　　■■■■　│　↓　　　　　│　│　　　　　
+　■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■　│　　↑Border　│　│　　　　　
+　■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■　│　　│　　　　│　│　　　　　
+　■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■　│　　│　　　　│　│　　　　　
+　■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■　↓　　↓　　　　│　│　　　　　
+　　　　 |　　　だるまさんが……………………ころんだ　　　| 　　　　　　　　　　　　│　│　　　　　
+　　　　 |　　　だるまさんが……………………ころんだ　　　| 　　　　　　　　　　　　│　│　　　　　
+　　　　 |　　　だるまさんが……………………ころんだ　　　| 　　　　　　　　　　　　│　↓　　　　　
+　　　　 |　　　　　　　　　　　　　　　　　　　　　　　　| 　　　　　　　　　　　　│　　↑　　　　
+　　　　 |　　　　　　　　　　　　　　　　　　　　　　　　| 　　　　　　　　　　　　│　　│Offset　
+　　　　 |＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿| 　　　　　　　　　　　　↓　　↓　　　　
+　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　
+　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　
+
+

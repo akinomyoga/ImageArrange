@@ -1,0 +1,382 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="ja">
+<head>
+<title>PropertyGrid についてメモ</title>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta http-equiv="Content-Style-Type" content="text/css" />
+<meta http-equiv="Content-Script-Type" content="text/javascript" />
+<link rel="stylesheet" type="text/css" charset="utf-8" href="http://myoga.web.fc2.com/mwg2/mwg.std.css" />
+<link rel="stylesheet" type="text/css" charset="utf-8" href="http://myoga.web.fc2.com/prog/prog.std.css" />
+<script type="text/javascript" charset="utf-8" src="http://myoga.web.fc2.com/mwg2/mwg.js"></script>
+<script type="text/javascript" charset="utf-8" src="http://myoga.web.fc2.com/mwg2/kick.text.color.js"></script>
+<style type="text/css">
+hr{height:1px;}
+</style>
+</head>
+<body>
+<h1>System.Windows.Forms.PropertyGrid 使い方</h1>
+<p>PropertyGrid に表示させる内容などは色々に設定して、変更したり追加したり出来る。
+その方法には色々あって、個々の方法については色々の所に載っているけれども、
+それらを纏めた物は無い様な気がするので自分の為に茲に纏めて置く事にする。</p>
+<h2>属性で表示非表示などの設定</h2>
+<p>プロパティに属性を付ける事によって、そのプロパティを表示する際の細かい事を指定する事が出来る。
+但し、これらの属性は特に PropertyGrid 専用の物ではないので、他にもこれらの属性を参照するプログラムは存在しうる。
+その場合には、そのプログラムの動作にも影響を与える事になるので注意する事。</p>
+<dl>
+<dt>System.ComponentModel.<dfn>DescriptionAttribute</dfn></dt>
+<dd>
+	<p>PropertyGrid に表示する説明を指定する。</p>
+<pre class="cs">
+public class Sample{
+	[System.ComponentModel.Description("-- Property1 の説明 --")]
+	public int Property1{get;set;}
+}
+</pre>
+</dd>
+<dt>System.ComponentModel.<dfn>BrowsableAttribute</dfn></dt>
+<dd>
+	<p>PropertyGrid に表示するかしないかを指定する。
+	プロパティに属性を何も指定しない場合には PropertyGrid に表示されてしまう。
+	従ってこの属性は、実際には表示したくない時に使う。
+	以下は表示しないという指定の例。</p>
+<pre class="cs">
+public class Class{
+	[System.ComponentModel.Browsable(false)]
+	public int Property{get;set;}
+}
+</pre>
+</dd>
+<dt>System.ComponentModel.<dfn>ReadOnlyAttribute</dfn></dt>
+<dd>
+	<p>PropertyGrid で編集出来ない事を指定する。</p>
+<pre class="cs">
+public class Class{
+	[System.ComponentModel.ReadOnly]
+	public int Property{get;set;}
+}
+</pre>
+</dd>
+<dt>System.ComponentModel.<dfn>CategoryAttribute</dfn></dt>
+<dd>
+	<p>「項目別」(「アルファベット順」/「項目別」の「項目別」) で表示した時の、
+	プロパティが表示される分類名を指定する。</p>
+<pre class="cs">
+public class Class{
+	[System.ComponentModel.Category("分類 1")]
+	public int Property{get;set;}
+}
+</pre>
+	<p>特に以下の物を指定した場合には、既存の項目と見做される。</p>
+	<table class="normal">
+	<tr><th>分類名</th><th>日本語での表示</th><th>備考</th></tr>
+	<tr><td>"Action"</td><td>アクション</td><td>特にイベントに用いられる</td></tr>
+	<tr><td>"Appearance"</td><td>表示</td></tr>
+	<tr><td>"Behaviour"</td><td>動作</td></tr>
+	<tr><td>"Data"</td><td>データ</td></tr>
+	<tr><td>"Default"</td><td>その他</td></tr>
+	<tr><td>"Design"</td><td>デザイン</td></tr>
+	<tr><td>"DragDrop"</td><td>ドラッグ アンド ドロップ</td><td>特にイベントに用いられる</td></tr>
+	<tr><td>"Focus"</td><td>フォーカス</td></tr>
+	<tr><td>"Format"</td><td>表式</td></tr>
+	<tr><td>"Key"</td><td>キー</td><td>特にイベントに用いられる</td></tr>
+	<tr><td>"Layout"</td><td>配置</td></tr>
+	<tr><td>"Mouse"</td><td>マウス</td><td>特にイベントに用いられる</td></tr>
+	<tr><td>"WindowStyle"</td><td>ウィンドウ スタイル</td></tr>
+	</table>
+	<p>特に属性を指定しない場合には分類は "Default" (その他) と解釈される。</p>
+</dd>
+<dt>System.ComponentModel.<dfn>DefaultValue</dfn></dt>
+<dd>
+	<p>そのプロパティの「既定の値」を指定する。
+	プロパティが「既定の値」以外の場合には PropertyGrid で値が太字で表示される。
+	既定の値の場合には通常の太さの文字で表示される。</p>
+<pre class="cs">
+public class Class{
+	[System.ComponentModel.DefaultValue(1234)]
+	public int Property{get;set;}
+	[System.ComponentModel.DefaultValue(typeof(int),"3124")]
+	public int Property2{get;set;}
+}
+</pre>
+</dd>
+<dt>System.ComponentModel.<dfn>DefaultProperty</dfn></dt>
+<dd>
+	<p>そのプロパティが、そのクラスの「既定のプロパティ」である事を指定する。
+	既定のプロパティは、PropertyGrid にオブジェクトが登録された時に一番初めに選択されている項目の事である。</p>
+<pre class="cs">
+public class Class{
+	[System.ComponentModel.DefaultProperty]
+	public int Property{get;set;}
+}
+</pre>
+</dd>
+<dt>System.ComponentModel.<dfn>DisplayName</dfn></dt>
+<dd>
+	<p>PropertyGrid に表示される名前を指定する。
+	(何も指定しない場合には、プロパティ名がその儘表示されている。)</p>
+<pre class="cs">
+public class Class{
+	[System.ComponentModel.DisplayName("プロパティ")]
+	public int Property{get;set;}
+}
+</pre>
+</dd>
+<dt>System.ComponentModel.<dfn>DesignOnly</dfn></dt>
+</dl>
+<!--******************************************************************-->
+<h2>TypeConverter</h2>
+<p>プロパティの型の為の TypeConverter を実装すればより細かい表示の設定を行う事が出来る。</p>
+<pre class="cs">
+using CM=System.ComponentModel;
+
+public class MyTypeConverter:CM::TypeConverter{
+	// ... 自分の好きな実装 (後述)
+}
+</pre>
+<p>実際に特定のプロパティに反映するには、プロパティに TypeConverterAttribute を用いて指定すればよい。</p>
+<pre class="cs">
+using CM=System.ComponentModel;
+
+public class Class{
+	[CM::TypeConverter(typeof(MyTypeConverter))]
+	public MyType Property{get;}
+}
+</pre>
+<p>或いは、MyType 自体の定義にこの属性を適用すれば、この型のプロパティ全てに設定が適用される。</p>
+<pre class="cs">
+using CM=System.ComponentModel;
+
+[CM::TypeConverter(typeof(MyTypeConverter))]
+public class MyType{
+
+}
+</pre>
+<h3>値の表示の変更</h3>
+<p>PropertyGrid 内に値として表示される文字列を自分の好きな物に変更したいという場合がある (かもしれない)。</p>
+<p>これを行うには、その型の ToString を override すると言う手もある。
+然し、これだと ToString() を呼び出した時と、PropertyGrid に表示した時で表示する内容を変えるという事が出来ない。
+また、プロパティ毎に表示の仕方を変えるという事も出来ないし、既存の型についての表示を変更する事も出来ない。
+そこで、TypeConverter を使用する事が出来る。</p>
+<p>以下は、TreeNodeSettings 型のプロパティに適用する為の Converter の実装である。</p>
+<pre class="cs">
+using CM=System.ComponentModel;
+
+public sealed class TreeNodeSettingsConverter:CM::TypeConverter{
+	public override bool CanConvertTo(CM::ITypeDescriptorContext context,System.Type destinationType){
+		if(destinationType==typeof(string))return true; // <strong>(1)</strong>
+		return base.CanConvertTo(context,destinationType);
+	}
+	public override object ConvertTo(
+		CM::ITypeDescriptorContext context,
+		System.Globalization.CultureInfo culture, 
+		object value, 
+		System.Type destinationType
+	){
+		if(destinationType==typeof(string)&&value is TreeNodeSettings){
+			return "(TreeNode の状態)"; // <strong>(2)</strong> PropertyGrid に表示したい文字列
+		}
+		return base.ConvertTo(context,culture,value,destinationType);
+	}
+}
+</pre>
+<ul>
+<li>(1) CanConvertTo を override して string に変換できる事を表明する。(string に対して true を返せば良い。)</li>
+<li>(2) ConvertTo を override して実際に string に変換するコードを書く。
+	PropertyGrind に表示したい文字列を返せばよい。
+</li>
+</ul>
+<h3>値の文字列による編集</h3>
+<p>値を文字列として表示する事が可能になったら、今度は表示されている文字列を直接変更してプロパティ値を編集したくなる。</p>
+<p>これにも、TypeConverter を使用する事が出来る。</p>
+<pre class="cs">
+using CM=System.ComponentModel;
+
+public sealed class SampleConverter:CM::TypeConverter{
+	public override bool CanConvertFrom(CM::ITypeDescriptorContext context,System.Type sourceType) {
+		if(sourceType==typeof(string))return true; // <strong>(1)</strong>
+		return base.CanConvertFrom(context,sourceType);
+	}
+	public override object ConvertFrom(
+		CM::ITypeDescriptorContext context,
+		System.Globalization.CultureInfo culture,
+		object value
+	){
+		string str=value as string;
+		if(str!=null){
+			/* ...  str を解釈してインスタンスを生成 or 取得するコード */
+
+			return /* インスタンス */; // <strong>(2)</strong>
+		}
+		return base.ConvertFrom(context,culture,value);
+	}
+}
+</pre>
+<ul>
+<li>(1) 今度は ConvertFrom を実装すればよい。
+	実装されている事を示す為に、CanConvertFrom を override して string からの変換が可能である事を表明する。</li>
+<li>(2) ConvertFrom を実際に実装する。value が文字列の場合には、それを読み取って解釈しインスタンスを返す様にする。
+	<p>慣例として、構成要素をコンマで区切った様な文字列形式が用いられる。</p>
+	<p>解釈に失敗した場合に適当には例外を投げておく事にすれば、
+	PropertyGrid が自動的に「プロパティの値が無効です」ダイアログを表示してくれる。
+	或いは、解釈できなかった場合には既定値を返す様にするというのも手である。
+	</p>
+	<p><strong>ConvertTo で string に変換した結果をその儘インスタンスに逆変換できる様にして置かないと、多分ちゃんと動かない。</strong>
+	試していないけれど。</p>
+</li>
+</ul>
+
+<h3>値の候補の列挙</h3>
+<p>コンボボックスの様に、プルダウンメニューから値の候補を選択できる様にするには、StandardValues を使用する。</p>
+<p>これを使用するには、予め <strong>ConvertTo (string へ) と ConvertFrom (string から) が実装されている必要がある</strong>。
+ConvertTo が実装されていないとプルダウンメニューに表示される文字列が ToString() した内容になってしまうし、
+ConvertFrom が実装されていないと実際に項目を選択した後に例外が発生する。</p>
+<p>具体的な実装の方法は以下の通り。</p>
+<pre class="cs">
+using CM=System.ComponentModel;
+
+public sealed class SampleConverter:CM::TypeConverter{
+	public override bool GetStandardValuesSupported(CM::ITypeDescriptorContext context){
+		return true; // <strong>(1)</strong>
+	}
+	public override CM::TypeConverter.StandardValuesCollection GetStandardValues(CM::ITypeDescriptorContext context) {
+		return new StandardValuesCollection(/* <strong>(2)</strong> 標準の値が格納された ICollection インスタンスを指定 */);
+	}
+	public override bool GetStandardValuesExclusive(CM::ITypeDescriptorContext context){
+		return false; // <strong>(3)</strong>
+	}
+}
+</pre>
+<ul>
+<li>(1) 値の候補が存在している事を表明する為に、GetStandardValuesSupported を override して true を返す。
+	<p>勿論、継承元 Converter が候補を提供しているが、このクラスでは提供したくないという時には false を返す様に override すれば良い。</p>
+</li>
+<li>(2) GetStandardValues にて実際の候補の集合を返す。
+	<p>候補が静的な物であれば、StandardValuesCollection インスタンスを毎回生成する必要はなくて、
+	静的メンバなどにキャッシュしておけば良い。</p>
+</li>
+<li>(3) (任意) 特に、表示候補以外の入力も受け付ける場合には GetStandardValuesExclusive で false を返す様にすればよい。
+	表示候補の値しか受け付けない場合には、特に GetStandardValuesExclusive を override する必要はない。 (既定で true が返される様である。)
+</li>
+</ul>
+<!--******************************************************************-->
+<h2>ExpandableObjectConverter</h2>
+<h3>ExpandableObjectConverter の指定</h3>
+<p>プロパティの型がクラスであって、それを展開して編集できるようにしたいときには、
+プロパティの型又はプロパティ自体に ExpandableObjectConverter を指定すると良い。</p>
+<pre class="cs">
+using CM=System.ComponentModel;
+
+[CM::TypeConverter(typeof(CM::ExpandableObjectConverter))]
+public class TreeNodeSettings{
+
+}
+
+または
+
+public class TreeView{
+	[CM::TypeConverter(typeof(CM::ExpandableObjectConverter))]
+	public TreeNodeSettings DefaultNodeParams{get;}
+}
+</pre>
+<p>型に指定すればその型を持つ全てのプロパティで展開が可能になるし、
+プロパティに指定すればそのプロパティだけで展開が可能になる。</p>
+<!--******************************************************************-->
+<h2>永続化</h2>
+<p>Visual Studio のフォームエディタ (Visual Designer) を使用すると、
+設定したプロパティの値に対応するコードが生成される。
+然し、自分の作った型の場合等には、生成されるコードが期待する物と異なる場合などがある。
+</p>
+<p>茲では、生成されるコードを或る程度制御する方法について纏める。</p>
+<h3>DesignSerializationVisibility</h3>
+<p>System.ComponentModel.DesignSerializationVisibility を指定する事により、
+プロパティ値の初期化の方法を変更する事が出来る。</p>
+<pre class="cs">
+/* using CM=System.ComponentModel; */
+
+// <strong>(1)</strong>
+[CM::DesignerSerializationVisibility(CM::DesignerSerializationVisibility.Visible)]
+public MyClass PropertyA{get;set;}
+
+// <strong>(2)</strong>
+[CM::DesignerSerializationVisibility(CM::DesignerSerializationVisibility.Content)]
+public MyClass PropertyB{get;}
+
+// <strong>(3)</strong>
+[CM::DesignerSerializationVisibility(CM::DesignerSerializationVisibility.Hidden)]
+public MyClass PropertyC{get;set;}
+</pre>
+<ul>
+<li>(1) Visible を指定すると、コンストラクタで値を初期化するなどしてインスタンスを取得して、プロパティに設定するコードが生成される。
+	<p>自分の作成した型についてこれを指定するには、a) シリアル化を実装するか、 b)後述の InstanceDescriptor への変換を実装しなければならない。</p>
+<pre class="cs">
+/* 例 */
+this.vector1=new Vector3(1.0,2.0,3.0);
+</pre>
+</li>
+<li>(2) Content を指定すると、そのプロパティ自体に値を代入するのではなく、
+	そのプロパティを通じて取得されるインスタンスのプロパティを設定する事により初期化が行われる。
+<pre class="cs">
+/* 例 */
+this.vector1.X=1.0;
+this.vector1.Y=2.0;
+this.vector1.Z=3.0;
+</pre>
+	<p>勿論、プロパティの型が値型などの場合には意味がない。
+	取得した値の方を変更しても、元のインスタンスを変更する事が出来ないので。
+	(コンパイル時に警告かエラーが出る。→<a href="#ref.1" class="internal">[1]</a>)</p>
+	<p>又、既定で null を返す様なプロパティではこれは使用できない。</p>
+	<p>ExpandableObjectConverter 等と併用すると良い。</p>
+</li>
+<li>(3) Hidden を指定すると永続化の為のコードは生成されない。則ち永続化が行われなくなる事を意味する。
+	<p>これは、他のプロパティの値を覚えておけば状況が再現される (値が連動しているプロパティ) 場合などに利用すると良い。</p>
+	<p>或いは、単純に永続化したくないプロパティに設定するのも良い。
+	が、抑もその様なプロパティには Browsable(false) を指定して PropertyGrid に表示しない方がよいと思う。</p>
+</li>
+</ul>
+<h3>InstanceDescriptor の利用</h3>
+<p>【未】</p>
+<!--******************************************************************-->
+<h2>PropertyDescriptor</h2>
+<p>【未】</p>
+<h2>PropertyTab</h2>
+<p>【未】</p>
+<!--******************************************************************-->
+<h2>注意</h2>
+<ul>
+<li>デザイナの中で TypeConverter が例外を発すると、Visual Studio を再起動するまで問題の TypeConverter が更新されない。
+つまり、TypeConverter のコードを修正しても同じ例外がデザイナの中で発生し続ける。
+(例外を発しない限りは、コンパイルする度に使用している TypeConverter も更新される…
+と思ったけれどもそうでもない様子。コンパイルし直しただけで例外を発するようになる事も。)
+</li>
+<li>InstanceDescriptor に private メンバを渡すと
+"型 '***' のオブジェクトを型 '***' に変換出来ません。" 等というメッセージが表示される。</li>
+</ul>
+
+<h2>参考</h2>
+<h3>纏まった資料</h3>
+<ul>
+<li><a class="extern" href="http://msdn.microsoft.com/ja-jp/library/aa302326.aspx">
+	.NET Framework の PropertyGrid コントロールの高度な活用</a>
+</li>
+<li><a class="extern" href="http://msdn.microsoft.com/ja-jp/library/aa302334.aspx">
+	Visual Studio .NET プロパティ ブラウザによるコンポーネントの本格的な RAD 化</a>
+</li>
+<li><a class="extern" href="http://msdn.microsoft.com/ja-jp/library/ms973818.aspx">
+	.NET Framework Visual Designers におけるコード生成のカスタマイズ</a>
+</li>
+<li><a class="extern" href="http://d.hatena.ne.jp/setuna-kanata/20090127/1233068229">
+	C#でツールを作る その１６ -PropertyGridを使ってみる- - while( c++ );</a>
+</li>
+<li><a class="extern" href="http://msdn.microsoft.com/ja-jp/library/ms973820.aspx">
+	.NET コンポーネントのためのカスタム デザイナの作成</a>
+</li>
+</ul>
+<h3>参照した資料</h3>
+<ul>
+<li><a id="ref.1">[1]</a> <a class="extern" href="http://www.atmarkit.co.jp/bbs/phpBB/viewtopic.php?topic=17869&forum=7">
+	件名：コンポーネントのプロパティの永続化指定での問題</a>
+</li>
+</ul>
+<!--******************************************************************-->
+</body>
+</html>
